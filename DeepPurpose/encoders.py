@@ -54,7 +54,7 @@ class transformer(nn.Sequential):
 		ex_e_mask = (1.0 - ex_e_mask) * -10000.0
 
 		emb = self.emb(e)
-		encoded_layers = self.encoder(emb.float(), ex_e_mask.float())
+		encoded_layers = self.encoder(emb.to(torch.get_default_dtype()), ex_e_mask.to(torch.get_default_dtype()))
 		return encoded_layers[:,0]
 
 
@@ -68,7 +68,7 @@ class CNN(nn.Sequential):
 			self.conv = nn.ModuleList([nn.Conv1d(in_channels = in_ch[i], 
 													out_channels = in_ch[i+1], 
 													kernel_size = kernels[i]) for i in range(layer_size)])
-			self.conv = self.conv.double()
+			self.conv = self.conv.to(torch.get_default_dtype())
 			n_size_d = self._get_conv_output((63, 100))
 			#n_size_d = 1000
 			self.fc1 = nn.Linear(n_size_d, config['hidden_dim_drug'])
@@ -80,7 +80,7 @@ class CNN(nn.Sequential):
 			self.conv = nn.ModuleList([nn.Conv1d(in_channels = in_ch[i], 
 													out_channels = in_ch[i+1], 
 													kernel_size = kernels[i]) for i in range(layer_size)])
-			self.conv = self.conv.double()
+			self.conv = self.conv.to(torch.get_default_dtype())
 			n_size_p = self._get_conv_output((26, 1000))
 
 			self.fc1 = nn.Linear(n_size_p, config['hidden_dim_protein'])
@@ -88,7 +88,7 @@ class CNN(nn.Sequential):
 	def _get_conv_output(self, shape):
 		bs = 1
 		input = Variable(torch.rand(bs, *shape))
-		output_feat = self._forward_features(input.double())
+		output_feat = self._forward_features(input.to(torch.get_default_dtype()))
 		n_size = output_feat.data.view(bs, -1).size(1)
 		return n_size
 
@@ -99,9 +99,9 @@ class CNN(nn.Sequential):
 		return x
 
 	def forward(self, v):
-		v = self._forward_features(v.double())
+		v = self._forward_features(v.to(torch.get_default_dtype()))
 		v = v.view(v.size(0), -1)
-		v = self.fc1(v.float())
+		v = self.fc1(v.to(torch.get_default_dtype()))
 		return v
 
 
@@ -116,7 +116,7 @@ class CNN_RNN(nn.Sequential):
 			self.conv = nn.ModuleList([nn.Conv1d(in_channels = in_ch[i], 
 													out_channels = in_ch[i+1], 
 													kernel_size = kernels[i]) for i in range(layer_size)])
-			self.conv = self.conv.double()
+			self.conv = self.conv.to(torch.get_default_dtype())
 			n_size_d = self._get_conv_output((63, 100)) # auto get the seq_len of CNN output
 
 			if config['rnn_Use_GRU_LSTM_drug'] == 'LSTM':
@@ -135,7 +135,7 @@ class CNN_RNN(nn.Sequential):
 			else:
 				raise AttributeError('Please use LSTM or GRU.')
 			direction = 2 if config['rnn_drug_bidirectional'] else 1
-			self.rnn = self.rnn.double()
+			self.rnn = self.rnn.to(torch.get_default_dtype())
 			self.fc1 = nn.Linear(config['rnn_drug_hid_dim'] * direction * n_size_d, config['hidden_dim_drug'])
 
 		if encoding == 'protein':
@@ -146,7 +146,7 @@ class CNN_RNN(nn.Sequential):
 			self.conv = nn.ModuleList([nn.Conv1d(in_channels = in_ch[i], 
 													out_channels = in_ch[i+1], 
 													kernel_size = kernels[i]) for i in range(layer_size)])
-			self.conv = self.conv.double()
+			self.conv = self.conv.to(torch.get_default_dtype())
 			n_size_p = self._get_conv_output((26, 1000))
 
 			if config['rnn_Use_GRU_LSTM_target'] == 'LSTM':
@@ -165,7 +165,7 @@ class CNN_RNN(nn.Sequential):
 			else:
 				raise AttributeError('Please use LSTM or GRU.')
 			direction = 2 if config['rnn_target_bidirectional'] else 1
-			self.rnn = self.rnn.double()
+			self.rnn = self.rnn.to(torch.get_default_dtype())
 			self.fc1 = nn.Linear(config['rnn_target_hid_dim'] * direction * n_size_p, config['hidden_dim_protein'])
 		self.encoding = encoding
 		self.config = config
@@ -173,7 +173,7 @@ class CNN_RNN(nn.Sequential):
 	def _get_conv_output(self, shape):
 		bs = 1
 		input = Variable(torch.rand(bs, *shape))
-		output_feat = self._forward_features(input.double())
+		output_feat = self._forward_features(input.to(torch.get_default_dtype()))
 		n_size = output_feat.data.view(bs, self.in_ch, -1).size(2)
 		return n_size
 
@@ -184,7 +184,7 @@ class CNN_RNN(nn.Sequential):
 
 	def forward(self, v):
 		for l in self.conv:
-			v = F.relu(l(v.double()))
+			v = F.relu(l(v.to(torch.get_default_dtype())))
 		batch_size = v.size(0)
 		v = v.view(v.size(0), v.size(2), -1)
 
@@ -193,25 +193,25 @@ class CNN_RNN(nn.Sequential):
 				direction = 2 if self.config['rnn_target_bidirectional'] else 1
 				h0 = torch.randn(self.config['rnn_target_n_layers'] * direction, batch_size, self.config['rnn_target_hid_dim']).to(device)
 				c0 = torch.randn(self.config['rnn_target_n_layers'] * direction, batch_size, self.config['rnn_target_hid_dim']).to(device)
-				v, (hn, cn) = self.rnn(v.double(), (h0.double(), c0.double()))
+				v, (hn, cn) = self.rnn(v.to(torch.get_default_dtype()), (h0.to(torch.get_default_dtype()), c0.to(torch.get_default_dtype())))
 			else:
 				# GRU
 				direction = 2 if self.config['rnn_target_bidirectional'] else 1
 				h0 = torch.randn(self.config['rnn_target_n_layers'] * direction, batch_size, self.config['rnn_target_hid_dim']).to(device)
-				v, hn = self.rnn(v.double(), h0.double())
+				v, hn = self.rnn(v.to(torch.get_default_dtype()), h0.to(torch.get_default_dtype()))
 		else:
 			if self.config['rnn_Use_GRU_LSTM_drug'] == 'LSTM':
 				direction = 2 if self.config['rnn_drug_bidirectional'] else 1
 				h0 = torch.randn(self.config['rnn_drug_n_layers'] * direction, batch_size, self.config['rnn_drug_hid_dim']).to(device)
 				c0 = torch.randn(self.config['rnn_drug_n_layers'] * direction, batch_size, self.config['rnn_drug_hid_dim']).to(device)
-				v, (hn, cn) = self.rnn(v.double(), (h0.double(), c0.double()))
+				v, (hn, cn) = self.rnn(v.to(torch.get_default_dtype()), (h0.to(torch.get_default_dtype()), c0.to(torch.get_default_dtype())))
 			else:
 				# GRU
 				direction = 2 if self.config['rnn_drug_bidirectional'] else 1
 				h0 = torch.randn(self.config['rnn_drug_n_layers'] * direction, batch_size, self.config['rnn_drug_hid_dim']).to(device)
-				v, hn = self.rnn(v.double(), h0.double())
+				v, hn = self.rnn(v.to(torch.get_default_dtype()), h0.to(torch.get_default_dtype()))
 		v = torch.flatten(v, 1)
-		v = self.fc1(v.float())
+		v = self.fc1(v.to(torch.get_default_dtype()))
 		return v
 
 
@@ -231,7 +231,7 @@ class MLP(nn.Sequential):
 
 	def forward(self, v):
 		# predict
-		v = v.float().to(device)
+		v = v.to(torch.get_default_dtype()).to(device)
 		for i, l in enumerate(self.predictor):
 			v = F.relu(l(v))
 		return v  

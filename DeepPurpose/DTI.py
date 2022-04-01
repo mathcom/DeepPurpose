@@ -304,11 +304,11 @@ class DBTA:
 			if self.drug_encoding in ["MPNN", 'Transformer', 'DGL_GCN', 'DGL_NeuralFP', 'DGL_GIN_AttrMasking', 'DGL_GIN_ContextPred', 'DGL_AttentiveFP']:
 				v_d = v_d
 			else:
-				v_d = v_d.float().to(self.device)                
+				v_d = v_d.to(torch.get_default_dtype()).to(self.device)                
 			if self.target_encoding == 'Transformer':
 				v_p = v_p
 			else:
-				v_p = v_p.float().to(self.device)                
+				v_p = v_p.to(torch.get_default_dtype()).to(self.device)                
 			score = self.model(v_d, v_p)
 			if self.binary:
 				m = torch.nn.Sigmoid()
@@ -316,7 +316,7 @@ class DBTA:
 			else:
 				loss_fct = torch.nn.MSELoss()
 				n = torch.squeeze(score, 1)
-				loss = loss_fct(n, Variable(torch.from_numpy(np.array(label)).float()).to(self.device))
+				loss = loss_fct(n, Variable(torch.from_numpy(np.array(label)).to(torch.get_default_dtype())).to(self.device))
 				logits = torch.squeeze(score).detach().cpu().numpy()
 			label_ids = label.to('cpu').numpy()
 			y_label = y_label + label_ids.flatten().tolist()
@@ -426,15 +426,15 @@ class DBTA:
 				if self.target_encoding == 'Transformer':
 					v_p = v_p
 				else:
-					v_p = v_p.float().to(self.device) 
+					v_p = v_p.to(torch.get_default_dtype()).to(self.device) 
 				if self.drug_encoding in ["MPNN", 'Transformer', 'DGL_GCN', 'DGL_NeuralFP', 'DGL_GIN_AttrMasking', 'DGL_GIN_ContextPred', 'DGL_AttentiveFP']:
 					v_d = v_d
 				else:
-					v_d = v_d.float().to(self.device)                
+					v_d = v_d.to(torch.get_default_dtype()).to(self.device)                
 					#score = self.model(v_d, v_p.float().to(self.device))
                
 				score = self.model(v_d, v_p)
-				label = Variable(torch.from_numpy(np.array(label)).float()).to(self.device)
+				label = Variable(torch.from_numpy(np.array(label)).to(torch.get_default_dtype())).to(self.device)
 
 				if self.binary:
 					loss_fct = torch.nn.BCELoss()
