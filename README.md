@@ -77,7 +77,6 @@ We recommend to install it locally since Binder needs to be refreshed every time
 ```bash
 conda create -n DeepPurpose python=3.6
 conda activate DeepPurpose
-conda install -c conda-forge rdkit
 conda install -c conda-forge notebook
 pip install git+https://github.com/bp-kelley/descriptastorus 
 pip install DeepPurpose
@@ -126,6 +125,12 @@ In addition to the DTI prediction, we also provide repurpose and virtual screeni
 from DeepPurpose import DTI as models
 from DeepPurpose.utils import *
 from DeepPurpose.dataset import *
+
+SAVE_PATH='./saved_path'
+import os 
+if not os.path.exists(SAVE_PATH):
+  os.makedirs(SAVE_PATH)
+
 
 # Load Data, an array of SMILES for drug, an array of Amino Acid Sequence for Target and an array of binding values/0-1 label.
 # e.g. ['Cc1ccc(CNS(=O)(=O)c2ccc(s2)S(N)(=O)=O)cc1', ...], ['MSHHWGYGKHNGPEHWHKDFPIAKGERQSPVDIDTH...', ...], [0.46, 0.49, ...]
@@ -183,6 +188,13 @@ from DeepPurpose import CompoundPred as models
 from DeepPurpose.utils import *
 from DeepPurpose.dataset import *
 
+
+SAVE_PATH='./saved_path'
+import os 
+if not os.path.exists(SAVE_PATH):
+  os.makedirs(SAVE_PATH)
+
+
 # load AID1706 Assay Data
 X_drugs, _, y = load_AID1706_SARS_CoV_3CL()
 
@@ -221,7 +233,7 @@ from DeepPurpose.utils import *
 from DeepPurpose.dataset import *
 
 # load DB Binary Data
-X_drugs, X_drugs_, y = read_file_training_dataset_drug_drug_pairs()
+X_drugs, X_drugs_, y = read_file_training_dataset_drug_drug_pairs("toy_data/ddi.txt")
 
 drug_encoding = 'rdkit_2d_normalized'
 train, val, test = data_process(X_drug = X_drugs, X_drug_ = X_drugs_, y = y, 
@@ -255,7 +267,7 @@ from DeepPurpose.utils import *
 from DeepPurpose.dataset import *
 
 # load DB Binary Data
-X_targets, X_targets_, y = read_file_training_dataset_protein_proteins_pairs()
+X_targets, X_targets_, y = read_file_training_dataset_protein_protein_pairs("toy_data/ppi.txt")
 
 target_encoding = 'CNN'
 train, val, test = data_process(X_target = X_targets, X_target_ = X_targets_, y = y, 
@@ -313,7 +325,7 @@ model.train(train, val, test)
 </details>
 
 ### Case Study 2 (a): Antiviral Drugs Repurposing for SARS-CoV2 3CLPro, using One Line.
-  Given a new target sequence (e.g. SARS-CoV2 3CL Protease), retrieve a list of repurposing drugs from a curated drug library of 81 antiviral drugs. The Binding Score is the Kd values. Results aggregated from five pretrained model on BindingDB dataset! (Caution: this currently is for educational purposes. The pretrained DTI models only cover a small dataset and thus cannot generalize to every new unseen protein. For best use case, train your own model with customized data.)
+  Given a new target sequence (e.g., SARS-CoV2 3CL Protease), retrieve a list of repurposing drugs from a curated drug library of 81 antiviral drugs. The Binding Score is the Kd values. Results aggregated from five pretrained model on BindingDB dataset! (Caution: this currently is for educational purposes. The pretrained DTI models only cover a small dataset and thus cannot generalize to every new unseen protein. For the best use case, train your own model with customized data.)
 
 <details>
   <summary>Click here for the code!</summary>
@@ -349,7 +361,7 @@ Drug Repurposing Result for SARS-CoV2 3CL Protease
 
 
 ### Case Study 2(b): Repurposing using Customized training data, with One Line.
-Given a new target sequence (e.g. SARS-CoV 3CL Pro), training on new data (AID1706 Bioassay), and then retrieve a list of repurposing drugs from a proprietary library (e.g. antiviral drugs). The model can be trained from scratch or finetuned from the pretraining checkpoint!
+Given a new target sequence (e.g., SARS-CoV 3CL Pro), training on new data (AID1706 Bioassay), and then retrieve a list of repurposing drugs from a proprietary library (e.g., antiviral drugs). The model can be trained from scratch or finetuned from the pretraining checkpoint!
 
 <details>
   <summary>Click here for the code!</summary>
@@ -469,7 +481,7 @@ DeepPurpose supports the following dataset loaders for now and more will be adde
 |SARS-CoV2 3to5_exonuclease|```load_SARS_CoV2_3to5_exonuclease()```|
 |SARS-CoV2 endoRNAse|```load_SARS_CoV2_endoRNAse()```|
 
-DeepPurpose also supports to read from users' txt file. It assumes the following data format.
+DeepPurpose also supports reading from users' txt file. It assumes the following data format.
 
 <details>
   <summary>Click here for the format expected!</summary>
@@ -530,7 +542,7 @@ from DeepPurpose import dataset
 X_drug, y = dataset.read_file_protein_function(PATH)
 ```
 
-For drug drug pairs:
+For drug-drug pairs:
 ```
 Drug1_SMILES Drug1_SMILES_ Score/Label
 Drug2_SMILES Drug2_SMILES_ Score/Label
@@ -543,7 +555,7 @@ from DeepPurpose import dataset
 X_drug, X_target, y = dataset.read_file_training_dataset_drug_drug_pairs(PATH)
 ```
 
-For protein protein pairs:
+For protein-protein pairs:
 ```
 Target1_Seq Target1_Seq_ Score/Label
 Target2_Seq Target2_Seq_ Score/Label
@@ -553,7 +565,7 @@ Then, use
 
 ```python 
 from DeepPurpose import dataset
-X_drug, X_target, y = dataset.read_file_training_dataset_protein_proteins_pairs(PATH)
+X_drug, X_target, y = dataset.read_file_training_dataset_protein_protein_pairs(PATH)
 ```
 
 For drug repurposing library:
@@ -605,11 +617,11 @@ net = models.model_pretrained(model = 'MPNN_CNN_DAVIS')
 or
 net = models.model_pretrained(FILE_PATH)
 ```
-The list of avaiable pretrained models:
+The list of available pretrained models:
 
 Model name consists of first the drug encoding, then the target encoding and then the trained dataset.
 
-Note that for DTI models, the BindingDB and DAVIS are trained on log scale. But DeepPurpose allows you to specify conversion between log scale (e.g. pIC50) and original scale by the variable `convert_y`.
+Note that for DTI models, the BindingDB and DAVIS are trained on the log scale. But DeepPurpose allows you to specify conversion between log scale (e.g., pIC50) and original scale by the variable `convert_y`.
 
 <details>
   <summary>Click here for the models supported!</summary>
